@@ -1,4 +1,3 @@
-```tsx
 "use client"
 
 import { Suspense, useState, useMemo, useEffect } from "react"
@@ -330,4 +329,3 @@ export default function PropriedadesPage() {
     </Suspense>
   )
 }
-```
