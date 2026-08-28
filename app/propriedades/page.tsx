@@ -1,6 +1,7 @@
+```tsx
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { Suspense, useState, useMemo, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -17,19 +18,28 @@ import { getPropriedades, getEmpreendedorById } from "@/lib/db"
 import type { Propriedade } from "@/lib/types"
 
 const tiposPropriedade = ["fazenda", "sitio", "chacara", "pousada", "camping"]
+
 const tiposLabels: Record<string, string> = {
   fazenda: "Fazenda",
-  sitio: "Sítio", 
+  sitio: "Sítio",
   chacara: "Chácara",
   pousada: "Pousada",
   camping: "Camping"
 }
-const amenidades = ["Piscina", "Wi-Fi", "Café da manhã", "Trilhas", "Churrasqueira", "Estacionamento"]
 
-export default function PropriedadesPage() {
+const amenidades = [
+  "Piscina",
+  "Wi-Fi",
+  "Café da manhã",
+  "Trilhas",
+  "Churrasqueira",
+  "Estacionamento"
+]
+
+function PropriedadesContent() {
   const searchParams = useSearchParams()
   const queryParam = searchParams.get("q") || ""
-  
+
   const [searchQuery, setSearchQuery] = useState(queryParam)
   const [priceRange, setPriceRange] = useState([0, 500])
   const [selectedTipos, setSelectedTipos] = useState<string[]>([])
@@ -44,11 +54,12 @@ export default function PropriedadesPage() {
 
   // Busca propriedades do mini banco
   const todasPropriedades = getPropriedades()
-  
+
   // Converte para o formato do PropertyCard
   const allProperties = useMemo(() => {
     return todasPropriedades.map(prop => {
       const emp = getEmpreendedorById(prop.empreendedorId)
+
       return {
         id: prop.id,
         name: prop.nome,
@@ -68,10 +79,18 @@ export default function PropriedadesPage() {
   }, [todasPropriedades])
 
   const filteredProperties = allProperties.filter((property) => {
-    const matchesSearch = property.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch =
+      property.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       property.location.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesPrice = property.price >= priceRange[0] && property.price <= priceRange[1]
-    const matchesTipo = selectedTipos.length === 0 || selectedTipos.includes(property.tipo)
+
+    const matchesPrice =
+      property.price >= priceRange[0] &&
+      property.price <= priceRange[1]
+
+    const matchesTipo =
+      selectedTipos.length === 0 ||
+      selectedTipos.includes(property.tipo)
+
     return matchesSearch && matchesPrice && matchesTipo
   })
 
@@ -79,10 +98,13 @@ export default function PropriedadesPage() {
     switch (ordenacao) {
       case "preco-menor":
         return a.price - b.price
+
       case "preco-maior":
         return b.price - a.price
+
       case "avaliacao":
         return b.rating - a.rating
+
       default:
         return b.reviews - a.reviews
     }
@@ -91,14 +113,16 @@ export default function PropriedadesPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      
+
       <main className="flex-1 py-8">
         <div className="container mx-auto px-4">
+
           {/* Header */}
           <div className="mb-8">
             <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground mb-2">
               Propriedades Rurais
             </h1>
+
             <p className="text-muted-foreground">
               Encontre o destino perfeito para sua próxima aventura no campo
             </p>
@@ -106,8 +130,10 @@ export default function PropriedadesPage() {
 
           {/* Search and Filters */}
           <div className="flex flex-col md:flex-row gap-4 mb-8">
+
             <div className="relative flex-1">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+
               <Input
                 type="text"
                 placeholder="Buscar por cidade ou nome da propriedade..."
@@ -116,17 +142,31 @@ export default function PropriedadesPage() {
                 className="pl-10"
               />
             </div>
+
             <Select value={ordenacao} onValueChange={setOrdenacao}>
               <SelectTrigger className="w-full md:w-48">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
+
               <SelectContent>
-                <SelectItem value="relevancia">Mais relevantes</SelectItem>
-                <SelectItem value="preco-menor">Menor preço</SelectItem>
-                <SelectItem value="preco-maior">Maior preço</SelectItem>
-                <SelectItem value="avaliacao">Melhor avaliação</SelectItem>
+                <SelectItem value="relevancia">
+                  Mais relevantes
+                </SelectItem>
+
+                <SelectItem value="preco-menor">
+                  Menor preço
+                </SelectItem>
+
+                <SelectItem value="preco-maior">
+                  Maior preço
+                </SelectItem>
+
+                <SelectItem value="avaliacao">
+                  Melhor avaliação
+                </SelectItem>
               </SelectContent>
             </Select>
+
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline" className="gap-2">
@@ -134,16 +174,21 @@ export default function PropriedadesPage() {
                   Filtros
                 </Button>
               </SheetTrigger>
+
               <SheetContent>
                 <SheetHeader>
                   <SheetTitle>Filtros</SheetTitle>
+
                   <SheetDescription>
                     Refine sua busca com os filtros abaixo
                   </SheetDescription>
                 </SheetHeader>
+
                 <div className="py-6 space-y-6">
+
                   <div className="space-y-4">
                     <Label>Faixa de Preço (por noite)</Label>
+
                     <Slider
                       value={priceRange}
                       onValueChange={setPriceRange}
@@ -151,6 +196,7 @@ export default function PropriedadesPage() {
                       min={0}
                       step={10}
                     />
+
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>R$ {priceRange[0]}</span>
                       <span>R$ {priceRange[1]}</span>
@@ -159,21 +205,37 @@ export default function PropriedadesPage() {
 
                   <div className="space-y-4">
                     <Label>Tipo de Propriedade</Label>
+
                     <div className="space-y-2">
                       {tiposPropriedade.map((tipo) => (
                         <div key={tipo} className="flex items-center gap-2">
+
                           <Checkbox
                             id={tipo}
                             checked={selectedTipos.includes(tipo)}
                             onCheckedChange={(checked) => {
                               if (checked) {
-                                setSelectedTipos([...selectedTipos, tipo])
+                                setSelectedTipos([
+                                  ...selectedTipos,
+                                  tipo
+                                ])
                               } else {
-                                setSelectedTipos(selectedTipos.filter(t => t !== tipo))
+                                setSelectedTipos(
+                                  selectedTipos.filter(
+                                    t => t !== tipo
+                                  )
+                                )
                               }
                             }}
                           />
-                          <Label htmlFor={tipo} className="font-normal">{tiposLabels[tipo]}</Label>
+
+                          <Label
+                            htmlFor={tipo}
+                            className="font-normal"
+                          >
+                            {tiposLabels[tipo]}
+                          </Label>
+
                         </div>
                       ))}
                     </div>
@@ -181,20 +243,36 @@ export default function PropriedadesPage() {
 
                   <div className="space-y-4">
                     <Label>Comodidades</Label>
+
                     <div className="space-y-2">
                       {amenidades.map((amenidade) => (
-                        <div key={amenidade} className="flex items-center gap-2">
+                        <div
+                          key={amenidade}
+                          className="flex items-center gap-2"
+                        >
+
                           <Checkbox id={amenidade} />
-                          <Label htmlFor={amenidade} className="font-normal">{amenidade}</Label>
+
+                          <Label
+                            htmlFor={amenidade}
+                            className="font-normal"
+                          >
+                            {amenidade}
+                          </Label>
+
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <Button className="w-full">Aplicar Filtros</Button>
+                  <Button className="w-full">
+                    Aplicar Filtros
+                  </Button>
+
                 </div>
               </SheetContent>
             </Sheet>
+
           </div>
 
           {/* Results */}
@@ -206,21 +284,29 @@ export default function PropriedadesPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedProperties.map((property) => (
-              <PropertyCard key={property.id} {...property} />
+              <PropertyCard
+                key={property.id}
+                {...property}
+              />
             ))}
           </div>
 
           {sortedProperties.length === 0 && (
             <div className="text-center py-12">
+
               <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+
               <h3 className="text-lg font-semibold text-foreground mb-2">
                 Nenhuma propriedade encontrada
               </h3>
+
               <p className="text-muted-foreground">
                 Tente ajustar os filtros ou buscar por outra região.
               </p>
+
             </div>
           )}
+
         </div>
       </main>
 
@@ -228,3 +314,20 @@ export default function PropriedadesPage() {
     </div>
   )
 }
+
+export default function PropriedadesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-muted-foreground">
+            Carregando propriedades...
+          </p>
+        </div>
+      }
+    >
+      <PropriedadesContent />
+    </Suspense>
+  )
+}
+```
