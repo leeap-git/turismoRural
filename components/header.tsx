@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Menu, X, Leaf, User, LogIn, LogOut, LayoutDashboard, Settings, ChevronDown } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import type { Empreendedor } from "@/lib/types"
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -28,7 +27,7 @@ export function Header() {
   const dashboardLink = userType === "empreendedor" ? "/dashboard/empreendedor" : "/dashboard/visitante"
   const userName = user?.nome?.split(" ")[0] || "Usuário"
   const isEmpreendedor = userType === "empreendedor"
-  const empresaNome = isEmpreendedor ? (user as Empreendedor)?.nomeEmpresa : null
+  const empresaNome = user?.tipo === "empreendedor" ? user.nomeEmpresa : null
 
   return (
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border-b border-border">
