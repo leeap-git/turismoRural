@@ -1,17 +1,20 @@
 // Tipos do sistema de Turismo Rural
 
-export interface Usuario {
+interface ContaBase {
   id: string
   nome: string
   email: string
   telefone: string
   cpf: string
-  tipo: "visitante" | "empreendedor"
   avatar?: string
   createdAt: string
 }
 
-export interface Empreendedor extends Usuario {
+export interface Usuario extends ContaBase {
+  tipo: "visitante"
+}
+
+export interface Empreendedor extends ContaBase {
   tipo: "empreendedor"
   nomeEmpresa: string
   cnpj: string

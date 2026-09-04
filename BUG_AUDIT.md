@@ -1,6 +1,7 @@
 # Auditoria de bugs — 03/09/2026
 
 ## Corrigidos nesta revisão
+- Corrigida a união discriminada de `Usuario` e `Empreendedor`, eliminando a inconsistência que fazia o TypeScript tratar empreendedor como visitante durante o build.
 - Leitura inicial do `localStorage` em componentes de página foi removida para evitar divergência de hidratação SSR/cliente.
 - O botão “Manter conectado” agora usa `localStorage` quando marcado e `sessionStorage` quando desmarcado, preservando a escolha ao atualizar o perfil.
 - Datas de negócio usam a data local do navegador em vez da data UTC, evitando troca de dia perto da meia-noite.
