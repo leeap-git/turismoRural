@@ -11,7 +11,7 @@ interface AuthContextType {
   userType: "visitante" | "empreendedor" | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (email: string, senha: string) => Promise<{ success: boolean; message: string; userType?: string }>
+  login: (email: string, senha: string, remember?: boolean) => Promise<{ success: boolean; message: string; userType?: string }>
   logout: () => void
   register: (dados: RegisterData) => Promise<{ success: boolean; message: string }>
   updateProfile: (dados: Partial<Usuario> | Partial<Empreendedor>) => { success: boolean; message: string }
@@ -56,9 +56,13 @@ function writePassword(email: string, senha: string) {
   window.localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords))
 }
 
-function saveSession(account: Usuario | Empreendedor) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(account))
-  localStorage.setItem(SESSION_TYPE_KEY, account.tipo)
+function saveSession(account: Usuario | Empreendedor, remember = true) {
+  const storage = remember ? localStorage : sessionStorage
+  const otherStorage = remember ? sessionStorage : localStorage
+  otherStorage.removeItem(SESSION_KEY)
+  otherStorage.removeItem(SESSION_TYPE_KEY)
+  storage.setItem(SESSION_KEY, JSON.stringify(account))
+  storage.setItem(SESSION_TYPE_KEY, account.tipo)
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -68,7 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const savedUserRaw = localStorage.getItem(SESSION_KEY)
+      const storage = localStorage.getItem(SESSION_KEY) ? localStorage : sessionStorage
+      const savedUserRaw = storage.getItem(SESSION_KEY)
       if (savedUserRaw) {
         const savedUser = JSON.parse(savedUserRaw) as Usuario | Empreendedor
         const account = loadStore()
@@ -79,17 +84,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           localStorage.removeItem(SESSION_KEY)
           localStorage.removeItem(SESSION_TYPE_KEY)
+          sessionStorage.removeItem(SESSION_KEY)
+          sessionStorage.removeItem(SESSION_TYPE_KEY)
         }
       }
     } catch {
       localStorage.removeItem(SESSION_KEY)
       localStorage.removeItem(SESSION_TYPE_KEY)
+      sessionStorage.removeItem(SESSION_KEY)
+      sessionStorage.removeItem(SESSION_TYPE_KEY)
     } finally {
       setIsLoading(false)
     }
   }, [])
 
-  const login = async (email: string, senha: string) => {
+  const login = async (email: string, senha: string, remember = true) => {
     await new Promise((resolve) => setTimeout(resolve, 150))
     const normalized = email.trim().toLowerCase()
     if (!normalized || !senha) return { success: false, message: "Informe e-mail e senha" }
@@ -104,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setUser(account)
     setUserType(account.tipo)
-    saveSession(account)
+    saveSession(account, remember)
     return { success: true, message: "Login realizado com sucesso!", userType: account.tipo }
   }
 
@@ -113,6 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserType(null)
     localStorage.removeItem(SESSION_KEY)
     localStorage.removeItem(SESSION_TYPE_KEY)
+    sessionStorage.removeItem(SESSION_KEY)
+    sessionStorage.removeItem(SESSION_TYPE_KEY)
   }
 
   const updateProfile = (dados: Partial<Usuario> | Partial<Empreendedor>) => {
@@ -125,14 +136,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const updated = { ...current, ...dados, id: current.id, tipo: "empreendedor" as const, email: current.email, cpf: current.cpf }
         upsertEmpreendedor(updated)
         setUser(updated)
-        saveSession(updated)
+        saveSession(updated, localStorage.getItem(SESSION_KEY) !== null)
       } else {
         const current = store.usuarios.find((u) => u.id === user.id)
         if (!current) throw new Error("Conta não encontrada")
         const updated = { ...current, ...dados, id: current.id, tipo: "visitante" as const, email: current.email, cpf: current.cpf }
         upsertUsuario(updated)
         setUser(updated)
-        saveSession(updated)
+        saveSession(updated, localStorage.getItem(SESSION_KEY) !== null)
       }
       return { success: true, message: "Dados atualizados com sucesso." }
     } catch (error) {
@@ -178,7 +189,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const nome = dados.nome.trim()
     const email = dados.email.trim().toLowerCase()
     const senha = dados.senha
-    if (!nome || !email || senha.length < 6) return { success: false, message: "Preencha os dados obrigatórios (senha mínima de 6 caracteres)." }
+    if (!nome || !email) return { success: false, message: "Preencha os dados obrigatórios." }
+    if (senha.length < 8 || !/[A-Z]/.test(senha) || !/[0-9]/.test(senha) || !/[^A-Za-z0-9]/.test(senha)) {
+      return { success: false, message: "A senha deve ter 8+ caracteres, maiúscula, número e símbolo." }
+    }
 
     const store = loadStore()
     const emailExiste = [...store.usuarios, ...store.empreendedores].some((item) => item.email.trim().toLowerCase() === email)
@@ -202,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       writePassword(email, senha)
       setUser(novoUsuario)
       setUserType("visitante")
-      saveSession(novoUsuario)
+      saveSession(novoUsuario, true)
     } else {
       if (!dados.nomeEmpresa?.trim()) return { success: false, message: "Informe o nome da empresa." }
       const novoEmpreendedor: Empreendedor = {
@@ -224,7 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       writePassword(email, senha)
       setUser(novoEmpreendedor)
       setUserType("empreendedor")
-      saveSession(novoEmpreendedor)
+      saveSession(novoEmpreendedor, true)
     }
 
     return { success: true, message: "Cadastro realizado com sucesso!" }

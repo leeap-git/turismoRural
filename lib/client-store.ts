@@ -125,7 +125,11 @@ export function newId(prefix: string): string {
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10)
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 function normalizeEmail(email: string): string {
@@ -420,7 +424,6 @@ export function deleteAtividade(id: string, empreendedorId?: string): boolean {
 
 export function crudReserva(id: string | null, dados: Partial<Reserva>, usuarioId: string): Reserva {
   const store = loadStore()
-  if (!visitorExists(store, usuarioId)) throw new Error("Visitante não encontrado")
 
   if (id) {
     const index = store.reservas.findIndex((r) => r.id === id)
@@ -467,6 +470,7 @@ export function crudReserva(id: string | null, dados: Partial<Reserva>, usuarioI
     return updated
   }
 
+  if (!visitorExists(store, usuarioId)) throw new Error("Somente visitantes podem criar reservas")
   if (!dados.propriedadeId && !dados.atividadeId) throw new Error("Informe uma propriedade ou atividade")
   if (!dados.dataInicio) throw new Error("Informe a data da reserva")
   const start = parseDate(dados.dataInicio)
@@ -510,6 +514,7 @@ export function pagarReserva(id: string, usuarioId: string, metodoPagamento: Res
   const current = store.reservas[index]
   if (current.usuarioId !== usuarioId) throw new Error("Você não pode pagar esta reserva")
   if (current.status !== "pendente") throw new Error("Esta reserva não está aguardando pagamento")
+  if (parseDate(current.dataInicio).getTime() < parseDate(today()).getTime()) throw new Error("Não é possível pagar uma reserva com data já iniciada")
   if (!metodoPagamento) throw new Error("Informe a forma de pagamento")
   validateReservationConflicts(store, { ...current, status: "confirmada" })
   const updated = { ...current, metodoPagamento, status: "confirmada" as const }
@@ -604,7 +609,7 @@ export function marcarLida(id: string, usuarioId?: string): boolean {
 
 export function crudAvaliacao(id: string | null, dados: Partial<Avaliacao>, usuarioId: string): Avaliacao {
   const store = loadStore()
-  if (!accountExists(store, usuarioId)) throw new Error("Usuário não encontrado")
+  if (!visitorExists(store, usuarioId)) throw new Error("Somente visitantes podem avaliar destinos")
 
   const resolvePropertyId = (propertyId?: string, activityId?: string): string | undefined => {
     if (propertyId) {
@@ -699,7 +704,7 @@ function recalcRatings(store: Store, propertyId?: string): void {
 
 export function toggleFavorito(usuarioId: string, propriedadeId: string): void {
   const store = loadStore()
-  if (!accountExists(store, usuarioId)) throw new Error("Usuário não encontrado")
+  if (!visitorExists(store, usuarioId)) throw new Error("Somente visitantes podem favoritar propriedades")
   const property = store.propriedades.find((p) => p.id === propriedadeId && p.ativo)
   if (!property) throw new Error("Propriedade não encontrada ou indisponível")
 
@@ -746,10 +751,10 @@ export function toggleBloqueio(empreendedorId: string, propriedadeId: string, da
   if (!property) throw new Error("Propriedade não encontrada")
   assertOwner(property.empreendedorId, empreendedorId, "Você não pode alterar esta propriedade")
   parseDate(date)
-  const dates = new Set(store.bloqueios[propertyId] || [])
+  const dates = new Set(store.bloqueios[propriedadeId] || [])
   if (dates.has(date)) dates.delete(date)
   else dates.add(date)
-  store.bloqueios[propertyId] = [...dates].sort()
+  store.bloqueios[propriedadeId] = [...dates].sort()
   saveStore(store)
   return dates.has(date)
 }
