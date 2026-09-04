@@ -28,7 +28,6 @@ import {
 import { useAuth } from "@/contexts/auth-context"
 import { loadStore, crudReserva } from "@/lib/client-store"
 import type { Store } from "@/lib/client-store"
-import type { Usuario } from "@/lib/types"
 
 const statusConfig = {
   confirmada: { label: "Confirmada", variant: "default" as const, icon: CalendarCheck },
@@ -60,9 +59,9 @@ export default function DashboardVisitantePage() {
     )
   }
 
-  const usuario = user as Usuario
+  const usuario = user?.tipo === "visitante" ? user : null
 
-  if (!store) {
+  if (!usuario) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando dados...</p></div>
   }
 
