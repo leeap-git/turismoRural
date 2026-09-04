@@ -164,6 +164,13 @@ function assertInteger(value: unknown, field: string, minimum = 0): number {
   return number
 }
 
+function isActiveReservation(reservation: Reserva): boolean {
+  if (reservation.status !== "pendente" && reservation.status !== "confirmada") return false
+  const todayIso = today()
+  if (reservation.dataFim) return reservation.dataFim >= todayIso
+  return reservation.dataInicio >= todayIso
+}
+
 function parseDate(date: string): Date {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Data inválida")
   const [year, month, day] = date.split("-").map(Number)
@@ -254,7 +261,7 @@ function validateReservationConflicts(store: Store, reservation: Reserva, ignore
     }
 
     const occupied = store.reservas
-      .filter((r) => r.id !== ignoreId && r.status !== "cancelada" && r.propriedadeId === reservation.propriedadeId)
+      .filter((r) => r.id !== ignoreId && isActiveReservation(r) && r.propriedadeId === reservation.propriedadeId)
       .filter((r) => rangesOverlap(r.dataInicio, r.dataFim, reservation.dataInicio, reservation.dataFim))
       .reduce((sum, r) => sum + r.pessoas, 0)
 
@@ -268,7 +275,7 @@ function validateReservationConflicts(store: Store, reservation: Reserva, ignore
     if (!activity) throw new Error("Atividade da reserva não encontrada")
 
     const used = store.reservas
-      .filter((r) => r.id !== ignoreId && r.status !== "cancelada" && r.atividadeId === reservation.atividadeId)
+      .filter((r) => r.id !== ignoreId && isActiveReservation(r) && r.atividadeId === reservation.atividadeId)
       .filter((r) => r.dataInicio === reservation.dataInicio)
       .reduce((sum, r) => sum + r.pessoas, 0)
 
@@ -308,6 +315,25 @@ export function crudPropriedade(id: string | null, dados: Partial<Propriedade>, 
       comodidades: dados.comodidades ?? current.comodidades,
       ativo: dados.ativo ?? current.ativo,
     }
+
+    const activePropertyReservations = store.reservas.filter(
+      (r) => r.propriedadeId === current.id && isActiveReservation(r),
+    )
+    for (const reservation of activePropertyReservations) {
+      if (reservation.pessoas > updated.capacidade) {
+        throw new Error("A nova capacidade não comporta uma reserva existente")
+      }
+    }
+    for (const reservation of activePropertyReservations) {
+      const concurrent = activePropertyReservations
+        .filter((other) => other.id !== reservation.id)
+        .filter((other) => rangesOverlap(other.dataInicio, other.dataFim, reservation.dataInicio, reservation.dataFim))
+        .reduce((sum, other) => sum + other.pessoas, reservation.pessoas)
+      if (concurrent > updated.capacidade) {
+        throw new Error("A nova capacidade não comporta as reservas existentes para as datas selecionadas")
+      }
+    }
+
     store.propriedades[index] = updated
     saveStore(store)
     return updated
@@ -373,6 +399,24 @@ export function crudAtividade(id: string | null, dados: Partial<Atividade>, empr
       ativo: dados.ativo ?? current.ativo,
     }
 
+    const activeActivityReservations = store.reservas.filter(
+      (r) => r.atividadeId === current.id && isActiveReservation(r),
+    )
+    if (updated.dataEvento !== current.dataEvento && activeActivityReservations.length > 0) {
+      throw new Error("Não é possível alterar a data de uma atividade que já possui reservas ativas")
+    }
+    if (activeActivityReservations.some((r) => r.pessoas > updated.vagas)) {
+      throw new Error("As novas vagas não comportam uma reserva existente")
+    }
+    const reservedPeople = activeActivityReservations.reduce((sum, r) => sum + r.pessoas, 0)
+    if (reservedPeople > updated.vagas) {
+      throw new Error("As novas vagas não comportam as reservas existentes")
+    }
+    if (updated.dataEvento) {
+      const eventDate = parseDate(updated.dataEvento)
+      if (eventDate.getTime() < parseDate(today()).getTime()) throw new Error("A data da atividade não pode estar no passado")
+    }
+
     const property = store.propriedades.find((p) => p.id === updated.propriedadeId)
     if (!property || property.empreendedorId !== empreendedorId) throw new Error("A atividade deve pertencer a uma propriedade sua")
     if (!property.ativo && updated.ativo) throw new Error("Não é possível publicar atividade em propriedade inativa")
@@ -387,6 +431,10 @@ export function crudAtividade(id: string | null, dados: Partial<Atividade>, empr
   const property = store.propriedades.find((p) => p.id === propertyId)
   if (!property || property.empreendedorId !== empreendedorId) throw new Error("A atividade deve pertencer a uma propriedade sua")
   if (!property.ativo) throw new Error("A atividade só pode ser criada em uma propriedade ativa")
+  if (dados.dataEvento) {
+    const eventDate = parseDate(dados.dataEvento)
+    if (eventDate.getTime() < parseDate(today()).getTime()) throw new Error("A data da atividade não pode estar no passado")
+  }
 
   const item: Atividade = {
     id: newId("ativ"),

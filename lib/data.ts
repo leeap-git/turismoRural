@@ -20,7 +20,7 @@ export const usuarios: Usuario[] = [
     telefone: "(14) 99999-1111",
     cpf: "123.456.789-00",
     tipo: "visitante",
-    avatar: "/placeholder.svg?height=100&width=100",
+    avatar: "/placeholder-user.jpg",
     createdAt: "2024-01-15"
   },
   {
