@@ -29,7 +29,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && userType) {
-      router.replace(userType === "empreendedor" ? "/dashboard/empreendedor" : "/dashboard/visitante")
+      const requestedNext = new URLSearchParams(window.location.search).get("next")
+      const safeNext = requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+        ? requestedNext
+        : userType === "empreendedor"
+          ? "/dashboard/empreendedor"
+          : "/dashboard/visitante"
+      router.replace(safeNext)
     }
   }, [isAuthenticated, userType, router])
 
@@ -43,13 +49,13 @@ export default function LoginPage() {
     
     if (result.success) {
       setSuccess(result.message)
-      setTimeout(() => {
-        if (result.userType === "empreendedor") {
-          router.push("/dashboard/empreendedor")
-        } else {
-          router.push("/dashboard/visitante")
-        }
-      }, 500)
+      const requestedNext = new URLSearchParams(window.location.search).get("next")
+      const safeNext = requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+        ? requestedNext
+        : result.userType === "empreendedor"
+          ? "/dashboard/empreendedor"
+          : "/dashboard/visitante"
+      setTimeout(() => router.push(safeNext), 500)
     } else {
       setError(result.message)
     }

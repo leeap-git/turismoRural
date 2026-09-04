@@ -41,7 +41,7 @@ function NovaReservaContent() {
   useEffect(() => {
     const store = loadStore()
     const active = store.propriedades.filter((p) => p.ativo)
-    const activeActivities = store.atividades.filter((a) => a.ativo)
+    const activeActivities = store.atividades.filter((a) => a.ativo && store.propriedades.some((p) => p.id === a.propriedadeId && p.ativo))
     setProps(active)
     setActivities(activeActivities)
     setF((current) => ({ ...current, propriedadeId: current.propriedadeId || initialPropertyId || "", atividadeId: current.atividadeId || initialActivityId || "" }))
@@ -49,6 +49,10 @@ function NovaReservaContent() {
 
   const property = props.find((p) => p.id === f.propriedadeId)
   const activity = activities.find((a) => a.id === f.atividadeId)
+  const hojeIso = useMemo(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  }, [])
   const noites = useMemo(() => calcularNoites(f.dataInicio, f.dataFim), [f.dataInicio, f.dataFim])
 
   const totalCalculado = (property ? property.preco * Math.max(1, Number(f.pessoas) || 1) * noites : 0) + (activity ? activity.preco * Math.max(1, Number(f.pessoas) || 1) : 0)
@@ -107,7 +111,7 @@ function NovaReservaContent() {
                   </div>}
                   {activity && <div className="rounded-lg border p-3"><p className="font-medium">{activity.nome}</p><p className="text-sm text-muted-foreground">R$ {activity.preco.toFixed(2)} por pessoa</p></div>}
                   <div className="grid md:grid-cols-3 gap-4">
-                    <div><Label>Entrada</Label><Input type="date" required value={f.dataInicio} onChange={(e) => set("dataInicio", e.target.value)} /></div>
+                    <div><Label>Entrada</Label><Input type="date" required min={hojeIso} value={f.dataInicio} onChange={(e) => set("dataInicio", e.target.value)} /></div>
                     {property ? (
                       <div><Label>Saída</Label><Input type="date" min={f.dataInicio || undefined} value={f.dataFim} onChange={(e) => set("dataFim", e.target.value)} /></div>
                     ) : (

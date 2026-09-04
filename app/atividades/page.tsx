@@ -31,8 +31,11 @@ export default function AtividadesPage() {
   const [empreendedores, setEmpreendedores] = useState<Empreendedor[]>([])
   const [properties, setProperties] = useState<Propriedade[]>([])
   const [reservas, setReservas] = useState<ReturnType<typeof loadStore>["reservas"]>([])
+  const [hojeIso, setHojeIso] = useState("")
 
   useEffect(() => {
+    const now = new Date()
+    setHojeIso(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`)
     const refresh = () => {
       const store = loadStore()
       setTodasAtividades(store.atividades)
@@ -46,7 +49,10 @@ export default function AtividadesPage() {
   }, [])
 
   const allActivities = useMemo(() => {
-    return todasAtividades.filter(ativ => ativ.ativo && !!properties.find(p => p.id === ativ.propriedadeId && p.ativo)).map(ativ => {
+    return todasAtividades
+      .filter(ativ => ativ.ativo && !!properties.find(p => p.id === ativ.propriedadeId && p.ativo))
+      .filter(ativ => !ativ.dataEvento || !hojeIso || ativ.dataEvento >= hojeIso)
+      .map(ativ => {
       const emp = empreendedores.find(e => e.id === ativ.empreendedorId)
       return {
         id: ativ.id,
@@ -54,16 +60,19 @@ export default function AtividadesPage() {
         property: emp?.nomeEmpresa || "",
         location: emp ? `${emp.cidade}, ${emp.estado}` : "",
         description: ativ.descricao.substring(0, 100) + "...",
-        image: ativ.imagem || "/placeholder.svg?height=300&width=400",
+        image: ativ.imagem || "/placeholder.jpg",
         date: ativ.dataEvento || "Sob consulta",
         time: ativ.horario || "",
         price: ativ.preco,
         spots: ativ.vagas,
-        spotsAvailable: Math.max(0, ativ.vagas - reservas.filter(r => r.atividadeId === ativ.id && r.status !== "cancelada" && (!ativ.dataEvento || r.dataInicio === ativ.dataEvento)).reduce((sum, r) => sum + r.pessoas, 0)),
+        spotsAvailable: Math.max(0, ativ.vagas - reservas
+          .filter(r => r.atividadeId === ativ.id && (r.status === "pendente" || r.status === "confirmada"))
+          .filter(r => !ativ.dataEvento || r.dataInicio === ativ.dataEvento)
+          .reduce((sum, r) => sum + r.pessoas, 0)),
         type: ativ.tipo,
       }
     })
-  }, [todasAtividades, empreendedores, properties, reservas])
+  }, [todasAtividades, empreendedores, properties, reservas, hojeIso])
 
   const filteredActivities = allActivities.filter((activity) => {
     const matchesSearch = 

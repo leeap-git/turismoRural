@@ -74,7 +74,7 @@ function PropriedadesContent() {
         name: prop.nome,
         location: `${prop.cidade}, ${prop.estado}`,
         description: prop.descricao.substring(0, 150) + "...",
-        image: prop.imagens[0] || "/placeholder.svg?height=400&width=600",
+        image: prop.imagens[0] || "/placeholder.jpg",
         rating: prop.avaliacao,
         reviews: prop.totalAvaliacoes,
         price: prop.preco,

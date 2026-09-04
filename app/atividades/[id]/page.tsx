@@ -16,15 +16,26 @@ export default function AtividadeDetalhePage() {
   const { id } = useParams<{ id: string }>()
   const [activity, setActivity] = useState<Atividade | null>(null)
   const [property, setProperty] = useState<Propriedade | null>(null)
+  const [spotsAvailable, setSpotsAvailable] = useState(0)
+  const [hojeIso, setHojeIso] = useState("")
 
   useEffect(() => {
     const refresh = () => {
+      const now = new Date()
+      const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+      setHojeIso(todayIso)
       const store = loadStore()
       const candidate = store.atividades.find((a) => a.id === id && a.ativo) || null
       const linkedProperty = candidate ? store.propriedades.find((p) => p.id === candidate.propriedadeId && p.ativo) || null : null
       const current = candidate && linkedProperty ? candidate : null
       setActivity(current)
       setProperty(linkedProperty)
+      setSpotsAvailable(current
+        ? Math.max(0, current.vagas - store.reservas
+          .filter((r) => r.atividadeId === current.id && (r.status === "pendente" || r.status === "confirmada"))
+          .filter((r) => !current.dataEvento || r.dataInicio === current.dataEvento)
+          .reduce((sum, r) => sum + r.pessoas, 0))
+        : 0)
     }
     refresh()
     window.addEventListener("turismo-rural-store", refresh)
@@ -65,7 +76,7 @@ export default function AtividadeDetalhePage() {
               {property && <p className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4" />{property.cidade}, {property.estado}</p>}
               <div className="flex flex-wrap gap-5 text-sm">
                 <span className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" />{activity.duracao}</span>
-                <span className="flex items-center gap-2"><Users className="h-4 w-4 text-primary" />{activity.vagas} vagas</span>
+                <span className="flex items-center gap-2"><Users className="h-4 w-4 text-primary" />{spotsAvailable}/{activity.vagas} vagas disponíveis</span>
                 {activity.dataEvento && <span className="flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" />{activity.dataEvento}{activity.horario ? ` às ${activity.horario}` : ""}</span>}
               </div>
               <p className="text-muted-foreground whitespace-pre-wrap">{activity.descricao}</p>
@@ -83,7 +94,13 @@ export default function AtividadeDetalhePage() {
                 <CardTitle>R$ {activity.preco.toFixed(2)} <span className="text-sm font-normal text-muted-foreground">/ pessoa</span></CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button className="w-full" size="lg" asChild><Link href={`/dashboard/visitante/reservas/nova?atividadeId=${activity.id}`}>Reservar agora</Link></Button>
+                {spotsAvailable === 0 || (activity.dataEvento && hojeIso && activity.dataEvento < hojeIso) ? (
+                  <Button className="w-full" size="lg" disabled>Indisponível</Button>
+                ) : (
+                  <Button className="w-full" size="lg" asChild>
+                    <Link href={`/dashboard/visitante/reservas/nova?atividadeId=${activity.id}`}>Reservar agora</Link>
+                  </Button>
+                )}
                 <div className="flex items-center gap-2 text-sm text-muted-foreground"><Star className="h-4 w-4" />Atividade cadastrada pelo empreendedor</div>
               </CardContent>
             </Card>

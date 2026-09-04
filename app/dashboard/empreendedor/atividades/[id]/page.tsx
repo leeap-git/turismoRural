@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { loadStore, crudAtividade } from "@/lib/client-store"
 import type { Atividade, Propriedade } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
+import { ImageUpload } from "@/components/image-upload"
 
 const TIPOS = ["passeio", "workshop", "gastronomia", "aventura", "cultural", "infantil"] as const
 
@@ -26,12 +27,12 @@ export default function Page() {
 
   useEffect(() => {
     const store = loadStore()
-    const current = store.atividades.find((a) => a.id === id) || null
+    const current = store.atividades.find((a) => a.id === id && a.empreendedorId === user?.id) || null
     setActivity(current)
     setProps(store.propriedades.filter((p) => p.empreendedorId === user?.id))
   }, [id, user?.id])
 
-  if (!activity) return <div className="p-10">Atividade não encontrada.</div>
+  if (!activity) return <div className="p-10">Atividade não encontrada ou você não tem acesso a ela.</div>
 
   const set = (key: keyof Atividade, value: string | number) => {
     setActivity((current) => current ? { ...current, [key]: value } : current)
@@ -52,6 +53,9 @@ export default function Page() {
           vagas: Math.max(1, Number(activity.vagas) || 1),
           duracao: activity.duracao.trim(),
           descricao: activity.descricao.trim(),
+          imagem: activity.imagem,
+          dataEvento: activity.dataEvento,
+          horario: activity.horario,
         },
         user.id,
       )
@@ -90,8 +94,13 @@ export default function Page() {
                   <div><Label>Preço</Label><Input type="number" min="0" step="0.01" required value={activity.preco} onChange={(e) => set("preco", Number(e.target.value))} /></div>
                   <div><Label>Vagas</Label><Input type="number" min="1" required value={activity.vagas} onChange={(e) => set("vagas", Number(e.target.value))} /></div>
                 </div>
-                <div><Label>Duração</Label><Input required value={activity.duracao} onChange={(e) => set("duracao", e.target.value)} /></div>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div><Label>Duração</Label><Input required value={activity.duracao} onChange={(e) => set("duracao", e.target.value)} /></div>
+                  <div><Label>Data</Label><Input type="date" min={new Date().toISOString().slice(0, 10)} value={activity.dataEvento || ""} onChange={(e) => set("dataEvento", e.target.value)} /></div>
+                  <div><Label>Horário</Label><Input type="time" value={activity.horario || ""} onChange={(e) => set("horario", e.target.value)} /></div>
+                </div>
                 <div><Label>Descrição</Label><Textarea rows={5} value={activity.descricao} onChange={(e) => set("descricao", e.target.value)} /></div>
+                <ImageUpload images={activity.imagem ? [activity.imagem] : []} maxImages={1} onChange={(images) => setActivity((current) => current ? { ...current, imagem: images[0] || "" } : current)} label="Foto da atividade" />
                 <Button type="submit"><Save className="mr-2 h-4 w-4" />Salvar alterações</Button>
               </form>
             </CardContent>

@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/contexts/auth-context"
 import { crudAtividade, loadStore } from "@/lib/client-store"
 import type { Propriedade } from "@/lib/types"
+import { ImageUpload } from "@/components/image-upload"
 
 const TIPOS = ["passeio", "workshop", "gastronomia", "aventura", "cultural", "infantil"] as const
 
@@ -32,10 +33,11 @@ export default function Page() {
     propriedadeId: "",
     dataEvento: "",
     horario: "",
+    imagem: "",
   })
 
   useEffect(() => {
-    const mine = loadStore().propriedades.filter((p) => p.empreendedorId === user?.id)
+    const mine = loadStore().propriedades.filter((p) => p.empreendedorId === user?.id && p.ativo)
     setProps(mine)
     setF((current) => ({ ...current, propriedadeId: current.propriedadeId || mine[0]?.id || "" }))
   }, [user?.id])
@@ -92,10 +94,11 @@ export default function Page() {
                   </div>
                   <div className="grid md:grid-cols-3 gap-4">
                     <div><Label>Duração</Label><Input required value={f.duracao} onChange={(e) => set("duracao", e.target.value)} /></div>
-                    <div><Label>Data</Label><Input type="date" value={f.dataEvento} onChange={(e) => set("dataEvento", e.target.value)} /></div>
+                    <div><Label>Data</Label><Input type="date" min={new Date().toISOString().slice(0, 10)} value={f.dataEvento} onChange={(e) => set("dataEvento", e.target.value)} /></div>
                     <div><Label>Horário</Label><Input type="time" value={f.horario} onChange={(e) => set("horario", e.target.value)} /></div>
                   </div>
                   <div><Label>Descrição</Label><Textarea rows={5} value={f.descricao} onChange={(e) => set("descricao", e.target.value)} /></div>
+                  <ImageUpload images={f.imagem ? [f.imagem] : []} maxImages={1} onChange={(imgs) => set("imagem", imgs[0] || "")} label="Foto da atividade" />
                   <Button type="submit"><Save className="mr-2 h-4 w-4" />Cadastrar</Button>
                 </form>
               )}

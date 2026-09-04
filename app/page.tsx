@@ -23,8 +23,16 @@ export default function HomePage() {
     return () => window.removeEventListener("turismo-rural-store", refresh)
   }, [])
 
+  const hoje = new Date()
+  const hojeIso = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`
+
   const propriedadesDestaque = useMemo(() => (store?.propriedades ?? []).filter(p => p.ativo).sort((a,b) => (b.avaliacao - a.avaliacao) || (b.totalAvaliacoes - a.totalAvaliacoes)).slice(0, 3), [store])
-  const atividadesProximas = useMemo(() => (store?.atividades ?? []).filter(a => a.ativo).sort((a,b) => (a.dataEvento || "9999-99-99").localeCompare(b.dataEvento || "9999-99-99")).slice(0, 3), [store])
+  const atividadesProximas = useMemo(() => (store?.atividades ?? [])
+    .filter(a => a.ativo)
+    .filter(a => store?.propriedades.some(p => p.id === a.propriedadeId && p.ativo))
+    .filter(a => !a.dataEvento || a.dataEvento >= hojeIso)
+    .sort((a,b) => (a.dataEvento || "9999-99-99").localeCompare(b.dataEvento || "9999-99-99"))
+    .slice(0, 3), [store, hojeIso])
 
   const featuredProperties = propriedadesDestaque.map(prop => {
     const emp = store?.empreendedores.find(e => e.id === prop.empreendedorId)
@@ -33,7 +41,7 @@ export default function HomePage() {
       name: prop.nome,
       location: `${prop.cidade}, ${prop.estado}`,
       description: prop.descricao.substring(0, 150) + "...",
-      image: prop.imagens[0] || "/placeholder.svg?height=400&width=600",
+      image: prop.imagens[0] || "/placeholder.jpg",
       rating: prop.avaliacao,
       reviews: prop.totalAvaliacoes,
       price: prop.preco,
@@ -51,12 +59,15 @@ export default function HomePage() {
       property: emp?.nomeEmpresa || "",
       location: emp ? `${emp.cidade}, ${emp.estado}` : "",
       description: ativ.descricao.substring(0, 100) + "...",
-      image: ativ.imagem || "/placeholder.svg?height=300&width=400",
+      image: ativ.imagem || "/placeholder.jpg",
       date: ativ.dataEvento || "Sob consulta",
       time: ativ.horario || "",
       price: ativ.preco,
       spots: ativ.vagas,
-      spotsAvailable: Math.floor(ativ.vagas * 0.4),
+      spotsAvailable: Math.max(0, ativ.vagas - (store?.reservas ?? [])
+        .filter(r => r.atividadeId === ativ.id && (r.status === "pendente" || r.status === "confirmada"))
+        .filter(r => !ativ.dataEvento || r.dataInicio === ativ.dataEvento)
+        .reduce((sum, r) => sum + r.pessoas, 0)),
       type: ativ.tipo.charAt(0).toUpperCase() + ativ.tipo.slice(1),
     }
   })

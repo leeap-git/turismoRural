@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { loadStore, crudPropriedade } from "@/lib/client-store"
 import type { Propriedade } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
+import { ImageUpload } from "@/components/image-upload"
 
 export default function Page() {
   const { id } = useParams<{ id: string }>()
@@ -22,12 +23,13 @@ export default function Page() {
   const [f, setF] = useState<Propriedade | null>(null)
 
   useEffect(() => {
-    const property = loadStore().propriedades.find((p) => p.id === id)
+    if (!user) { setF(null); return }
+    const property = loadStore().propriedades.find((p) => p.id === id && p.empreendedorId === user.id)
     setF(property ? { ...property } : null)
-  }, [id])
+  }, [id, user?.id])
 
   if (!f) {
-    return <div className="p-10">Propriedade não encontrada.</div>
+    return <div className="p-10">Propriedade não encontrada ou você não tem acesso a ela.</div>
   }
 
   const set = (key: keyof Propriedade, value: string | number) => {
@@ -49,6 +51,7 @@ export default function Page() {
           capacidade: Math.max(1, Number(f.capacidade) || 1),
           endereco: f.endereco.trim(),
           descricao: f.descricao.trim(),
+          imagens: f.imagens,
         },
         user.id,
       )
@@ -77,6 +80,7 @@ export default function Page() {
                 </div>
                 <div><Label>Endereço</Label><Input value={f.endereco} onChange={(e) => set("endereco", e.target.value)} /></div>
                 <div><Label>Descrição</Label><Textarea rows={5} value={f.descricao} onChange={(e) => set("descricao", e.target.value)} /></div>
+                <ImageUpload images={f.imagens || []} onChange={(images) => setF((current) => current ? { ...current, imagens: images } : current)} label="Fotos da propriedade" />
                 <Button type="submit"><Save className="mr-2 h-4 w-4" />Salvar alterações</Button>
               </form>
             </CardContent>

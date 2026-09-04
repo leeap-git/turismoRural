@@ -91,7 +91,7 @@ export default function SobrePage() {
               </div>
               <div className="aspect-video bg-muted rounded-lg overflow-hidden">
                 <img
-                  src="/placeholder.svg?height=400&width=600&text=Turismo Rural"
+                  src="/placeholder.jpg&text=Turismo Rural"
                   alt="Turismo Rural"
                   className="object-cover w-full h-full"
                 />
