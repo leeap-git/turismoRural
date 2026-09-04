@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
-import { loadStore } from "@/lib/client-store"
+import { loadStore, type Store } from "@/lib/client-store"
 
 export default function DashboardEmpreendedorPage() {
   const { user } = useAuth()
-  const [store, setStore] = useState(loadStore())
+  const [store, setStore] = useState<Store | null>(null)
 
   useEffect(() => {
     const refresh = () => setStore(loadStore())
@@ -23,7 +23,7 @@ export default function DashboardEmpreendedorPage() {
   }, [])
 
   const mine = useMemo(() => {
-    if (!user) return { properties: [], activities: [], reservations: [], messages: [] as typeof store.mensagens }
+    if (!user || !store) return { properties: [], activities: [], reservations: [], messages: [] as Store["mensagens"] }
     const properties = store.propriedades.filter((p) => p.empreendedorId === user.id)
     const propertyIds = new Set(properties.map((p) => p.id))
     const activities = store.atividades.filter((a) => a.empreendedorId === user.id || propertyIds.has(a.propriedadeId))

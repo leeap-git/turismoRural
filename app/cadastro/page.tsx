@@ -59,8 +59,8 @@ export default function CadastroPage() {
       return
     }
 
-    if (formData.senha.length < 6) {
-      setError("A senha deve ter pelo menos 6 caracteres")
+    if (formData.senha.length < 8 || !/[A-Z]/.test(formData.senha) || !/[0-9]/.test(formData.senha) || !/[^A-Za-z0-9]/.test(formData.senha)) {
+      setError("A senha deve ter 8+ caracteres, maiúscula, número e símbolo.")
       return
     }
 
@@ -222,7 +222,7 @@ export default function CadastroPage() {
                           <Input
                             id="senha"
                             type={showPassword ? "text" : "password"}
-                            placeholder="Mínimo 6 caracteres"
+                            placeholder="8+ caracteres, maiúscula, número e símbolo"
                             value={formData.senha}
                             onChange={(e) => setFormData({ ...formData, senha: e.target.value })}
                             required

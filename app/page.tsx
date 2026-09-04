@@ -12,9 +12,10 @@ import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { loadStore } from "@/lib/client-store"
 import type { Propriedade, Atividade, Empreendedor } from "@/lib/types"
+import type { Store } from "@/lib/client-store"
 
 export default function HomePage() {
-  const [store, setStore] = useState(loadStore())
+  const [store, setStore] = useState<Store | null>(null)
   useEffect(() => {
     const refresh = () => setStore(loadStore())
     refresh()
@@ -22,11 +23,11 @@ export default function HomePage() {
     return () => window.removeEventListener("turismo-rural-store", refresh)
   }, [])
 
-  const propriedadesDestaque = useMemo(() => store.propriedades.filter(p => p.ativo).sort((a,b) => (b.avaliacao - a.avaliacao) || (b.totalAvaliacoes - a.totalAvaliacoes)).slice(0, 3), [store])
-  const atividadesProximas = useMemo(() => store.atividades.filter(a => a.ativo).sort((a,b) => (a.dataEvento || "9999-99-99").localeCompare(b.dataEvento || "9999-99-99")).slice(0, 3), [store])
+  const propriedadesDestaque = useMemo(() => (store?.propriedades ?? []).filter(p => p.ativo).sort((a,b) => (b.avaliacao - a.avaliacao) || (b.totalAvaliacoes - a.totalAvaliacoes)).slice(0, 3), [store])
+  const atividadesProximas = useMemo(() => (store?.atividades ?? []).filter(a => a.ativo).sort((a,b) => (a.dataEvento || "9999-99-99").localeCompare(b.dataEvento || "9999-99-99")).slice(0, 3), [store])
 
   const featuredProperties = propriedadesDestaque.map(prop => {
-    const emp = store.empreendedores.find(e => e.id === prop.empreendedorId)
+    const emp = store?.empreendedores.find(e => e.id === prop.empreendedorId)
     return {
       id: prop.id,
       name: prop.nome,
@@ -43,7 +44,7 @@ export default function HomePage() {
   })
 
   const upcomingActivities = atividadesProximas.map(ativ => {
-    const emp = store.empreendedores.find(e => e.id === ativ.empreendedorId)
+    const emp = store?.empreendedores.find(e => e.id === ativ.empreendedorId)
     return {
       id: ativ.id,
       name: ativ.nome,

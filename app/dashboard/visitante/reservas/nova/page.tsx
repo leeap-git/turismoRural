@@ -60,7 +60,8 @@ function NovaReservaContent() {
     if (!user || (!property && !activity)) return
 
     if (!f.dataInicio) { alert("Informe a data de entrada."); return }
-    if (f.dataFim && f.dataFim <= f.dataInicio) { alert("A data de saída deve ser posterior à entrada."); return }
+    if (property && f.dataFim && f.dataFim <= f.dataInicio) { alert("A data de saída deve ser posterior à entrada."); return }
+    if (activity && activity.dataEvento && f.dataInicio !== activity.dataEvento) { alert(`Esta atividade acontece em ${activity.dataEvento}.`); return }
     const pessoas = Number(f.pessoas)
     const maxPeople = property?.capacidade ?? activity?.vagas ?? 0
     if (!Number.isInteger(pessoas) || pessoas < 1 || pessoas > maxPeople) { alert("Número de pessoas inválido para este item."); return }
@@ -107,13 +108,17 @@ function NovaReservaContent() {
                   {activity && <div className="rounded-lg border p-3"><p className="font-medium">{activity.nome}</p><p className="text-sm text-muted-foreground">R$ {activity.preco.toFixed(2)} por pessoa</p></div>}
                   <div className="grid md:grid-cols-3 gap-4">
                     <div><Label>Entrada</Label><Input type="date" required value={f.dataInicio} onChange={(e) => set("dataInicio", e.target.value)} /></div>
-                    <div><Label>Saída</Label><Input type="date" min={f.dataInicio || undefined} value={f.dataFim} onChange={(e) => set("dataFim", e.target.value)} /></div>
+                    {property ? (
+                      <div><Label>Saída</Label><Input type="date" min={f.dataInicio || undefined} value={f.dataFim} onChange={(e) => set("dataFim", e.target.value)} /></div>
+                    ) : (
+                      <div><Label>Data da atividade</Label><Input type="date" value={f.dataInicio} onChange={(e) => set("dataInicio", e.target.value)} disabled={Boolean(activity?.dataEvento)} /><p className="text-xs text-muted-foreground mt-1">Atividades não utilizam data de saída.</p></div>
+                    )}
                     <div><Label>Pessoas</Label><Input type="number" min="1" max={property?.capacidade ?? activity?.vagas} required value={f.pessoas} onChange={(e) => set("pessoas", e.target.value)} /></div>
                   </div>
                   <div className="rounded-lg border p-4 bg-muted/30">
                     {property && <div className="flex justify-between"><span>Diária</span><span>R$ {property.preco.toFixed(2)}</span></div>}
                     {activity && <div className="flex justify-between"><span>Atividade</span><span>R$ {activity.preco.toFixed(2)}</span></div>}
-                    <div className="flex justify-between"><span>Noites</span><span>{noites}</span></div>
+                    {property && <div className="flex justify-between"><span>Noites</span><span>{noites}</span></div>}
                     <div className="flex justify-between font-semibold mt-2 pt-2 border-t"><span>Total</span><span>R$ {totalCalculado.toFixed(2)}</span></div>
                   </div>
                   <Button type="submit">Criar reserva</Button>

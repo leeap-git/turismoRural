@@ -39,7 +39,7 @@ export default function LoginPage() {
     setSuccess("")
     setIsLoading(true)
 
-    const result = await login(formData.email, formData.senha)
+    const result = await login(formData.email, formData.senha, formData.lembrar)
     
     if (result.success) {
       setSuccess(result.message)

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -26,6 +27,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { loadStore, crudReserva } from "@/lib/client-store"
+import type { Store } from "@/lib/client-store"
 import type { Usuario } from "@/lib/types"
 
 const statusConfig = {
@@ -38,6 +40,14 @@ const statusConfig = {
 export default function DashboardVisitantePage() {
   const { user, userType, isLoading, logout } = useAuth()
   const router = useRouter()
+  const [store, setStore] = useState<Store | null>(null)
+
+  useEffect(() => {
+    const refresh = () => setStore(loadStore())
+    if (!isLoading && user && userType === "visitante") refresh()
+    window.addEventListener("turismo-rural-store", refresh)
+    return () => window.removeEventListener("turismo-rural-store", refresh)
+  }, [isLoading, user, userType])
 
   if (isLoading || !user || userType !== "visitante") {
     return (
@@ -51,8 +61,11 @@ export default function DashboardVisitantePage() {
   }
 
   const usuario = user as Usuario
-  
-  const store = loadStore()
+
+  if (!store) {
+    return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando dados...</p></div>
+  }
+
   const reservasUsuario = store.reservas.filter(r => r.usuarioId === usuario.id)
 
   const reservas = reservasUsuario.map(reserva => {
