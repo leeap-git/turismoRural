@@ -84,11 +84,13 @@ export function ActivityCard({
           <span className="text-lg font-bold text-foreground">R$ {price.toFixed(2)}</span>
           <span className="text-sm text-muted-foreground">/pessoa</span>
         </div>
-        <Button asChild disabled={spotsAvailable === 0}>
-          <Link href={`/atividades/${id}`}>
-            {spotsAvailable === 0 ? "Esgotado" : "Reservar"}
-          </Link>
-        </Button>
+        {spotsAvailable === 0 ? (
+          <Button disabled>Esgotado</Button>
+        ) : (
+          <Button asChild>
+            <Link href={`/atividades/${id}`}>Reservar</Link>
+          </Button>
+        )}
       </CardFooter>
     </Card>
   )
