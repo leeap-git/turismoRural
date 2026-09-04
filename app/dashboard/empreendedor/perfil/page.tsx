@@ -13,10 +13,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useAuth } from "@/contexts/auth-context"
+import type { Empreendedor } from "@/lib/types"
 
 export default function PerfilEmpreendedorPage() {
   const { user, updateProfile, changePassword, deleteAccount } = useAuth()
-  const emp = user?.tipo === "empreendedor" ? user : null
+  const emp: Empreendedor | null = user?.tipo === "empreendedor" ? (user as Empreendedor) : null
   const [form, setForm] = useState({ nome: "", telefone: "", nomeEmpresa: "", cnpj: "", endereco: "", cidade: "", estado: "", descricao: "" })
   const [password, setPassword] = useState({ current: "", next: "", confirm: "" })
   const [message, setMessage] = useState("")
