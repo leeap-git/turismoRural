@@ -10,13 +10,15 @@ import { Footer } from "@/components/footer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { loadStore } from "@/lib/client-store"
+import { loadStore, toggleFavorito } from "@/lib/client-store"
+import { useAuth } from "@/contexts/auth-context"
 import type { Empreendedor, Propriedade } from "@/lib/types"
 
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [property, setProperty] = useState<Propriedade | null>(null)
   const [owner, setOwner] = useState<Empreendedor | null>(null)
+  const { user } = useAuth()
   const [isFavorite, setIsFavorite] = useState(false)
 
   const refresh = () => {
@@ -24,13 +26,14 @@ export default function PropertyDetailPage() {
     const current = store.propriedades.find((p) => p.id === id && p.ativo) || null
     setProperty(current)
     setOwner(current ? store.empreendedores.find((e) => e.id === current.empreendedorId) || null : null)
+    setIsFavorite(!!user && !!current && store.favoritos.some((f) => f.usuarioId === user.id && f.propriedadeId === current.id))
   }
 
   useEffect(() => {
     refresh()
     window.addEventListener("turismo-rural-store", refresh)
     return () => window.removeEventListener("turismo-rural-store", refresh)
-  }, [id])
+  }, [id, user])
 
   if (!property) {
     return (
@@ -97,14 +100,14 @@ export default function PropertyDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button className="w-full" size="lg" asChild>
-                  <Link href="/dashboard/visitante/reservas/nova"><CalendarDays className="mr-2 h-4 w-4" />Reservar</Link>
+                  <Link href={`/dashboard/visitante/reservas/nova?propriedadeId=${property.id}`}><CalendarDays className="mr-2 h-4 w-4" />Reservar</Link>
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full"
                   onClick={() => {
-                    // O favorito é persistido para o usuário logado; a atualização visual fica no dashboard.
-                    setIsFavorite((current) => !current)
+                    if (!user) return
+                    try { toggleFavorito(user.id, property.id) } catch (error) { alert(error instanceof Error ? error.message : "Não foi possível favoritar a propriedade.") }
                   }}
                 >
                   <Heart className="mr-2 h-4 w-4" />{isFavorite ? "Favoritado" : "Favoritar"}

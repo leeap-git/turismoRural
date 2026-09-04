@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, MapPin } from "lucide-react"
 import { loadStore } from "@/lib/client-store"
-import type { Atividade, Empreendedor } from "@/lib/types"
+import type { Atividade, Empreendedor, Propriedade } from "@/lib/types"
 
 const tiposLabels: Record<string, string> = {
   passeio: "Passeio",
@@ -29,12 +29,16 @@ export default function AtividadesPage() {
 
   const [todasAtividades, setTodasAtividades] = useState<Atividade[]>([])
   const [empreendedores, setEmpreendedores] = useState<Empreendedor[]>([])
+  const [properties, setProperties] = useState<Propriedade[]>([])
+  const [reservas, setReservas] = useState<ReturnType<typeof loadStore>["reservas"]>([])
 
   useEffect(() => {
     const refresh = () => {
       const store = loadStore()
       setTodasAtividades(store.atividades)
       setEmpreendedores(store.empreendedores)
+      setProperties(store.propriedades)
+      setReservas(store.reservas)
     }
     refresh()
     window.addEventListener("turismo-rural-store", refresh)
@@ -42,7 +46,7 @@ export default function AtividadesPage() {
   }, [])
 
   const allActivities = useMemo(() => {
-    return todasAtividades.filter(ativ => ativ.ativo).map(ativ => {
+    return todasAtividades.filter(ativ => ativ.ativo && !!properties.find(p => p.id === ativ.propriedadeId && p.ativo)).map(ativ => {
       const emp = empreendedores.find(e => e.id === ativ.empreendedorId)
       return {
         id: ativ.id,
@@ -55,11 +59,11 @@ export default function AtividadesPage() {
         time: ativ.horario || "",
         price: ativ.preco,
         spots: ativ.vagas,
-        spotsAvailable: Math.floor(ativ.vagas * 0.4),
+        spotsAvailable: Math.max(0, ativ.vagas - reservas.filter(r => r.atividadeId === ativ.id && r.status !== "cancelada" && (!ativ.dataEvento || r.dataInicio === ativ.dataEvento)).reduce((sum, r) => sum + r.pessoas, 0)),
         type: ativ.tipo,
       }
     })
-  }, [todasAtividades, empreendedores])
+  }, [todasAtividades, empreendedores, properties, reservas])
 
   const filteredActivities = allActivities.filter((activity) => {
     const matchesSearch = 
@@ -79,8 +83,9 @@ export default function AtividadesPage() {
       case "vagas":
         return b.spotsAvailable - a.spotsAvailable
       default:
-        return new Date(a.date.split('/').reverse().join('-')).getTime() - 
-               new Date(b.date.split('/').reverse().join('-')).getTime()
+        if (a.date === "Sob consulta") return 1
+        if (b.date === "Sob consulta") return -1
+        return a.date.localeCompare(b.date)
     }
   })
 

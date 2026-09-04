@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect, useMemo, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/contexts/auth-context"
 import { crudReserva, loadStore } from "@/lib/client-store"
-import type { Propriedade } from "@/lib/types"
+import type { Propriedade, Atividade } from "@/lib/types"
 
 function calcularNoites(inicio: string, fim: string): number {
   if (!inicio || !fim) return 1
@@ -21,12 +21,17 @@ function calcularNoites(inicio: string, fim: string): number {
   return Math.max(1, diff)
 }
 
-export default function Page() {
+function NovaReservaContent() {
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialPropertyId = searchParams.get("propriedadeId") || ""
+  const initialActivityId = searchParams.get("atividadeId") || ""
   const [props, setProps] = useState<Propriedade[]>([])
+  const [activities, setActivities] = useState<Atividade[]>([])
   const [f, setF] = useState({
     propriedadeId: "",
+    atividadeId: "",
     dataInicio: "",
     dataFim: "",
     pessoas: "1",
@@ -34,37 +39,41 @@ export default function Page() {
   })
 
   useEffect(() => {
-    const active = loadStore().propriedades.filter((p) => p.ativo)
+    const store = loadStore()
+    const active = store.propriedades.filter((p) => p.ativo)
+    const activeActivities = store.atividades.filter((a) => a.ativo)
     setProps(active)
-    setF((current) => ({ ...current, propriedadeId: current.propriedadeId || active[0]?.id || "" }))
-  }, [])
+    setActivities(activeActivities)
+    setF((current) => ({ ...current, propriedadeId: current.propriedadeId || initialPropertyId || "", atividadeId: current.atividadeId || initialActivityId || "" }))
+  }, [initialPropertyId, initialActivityId])
 
   const property = props.find((p) => p.id === f.propriedadeId)
+  const activity = activities.find((a) => a.id === f.atividadeId)
   const noites = useMemo(() => calcularNoites(f.dataInicio, f.dataFim), [f.dataInicio, f.dataFim])
 
-  const totalCalculado = property
-    ? property.preco * Math.max(1, Number(f.pessoas) || 1) * noites
-    : 0
+  const totalCalculado = (property ? property.preco * Math.max(1, Number(f.pessoas) || 1) * noites : 0) + (activity ? activity.preco * Math.max(1, Number(f.pessoas) || 1) : 0)
 
   const set = (key: string, value: string) => setF((x) => ({ ...x, [key]: value }))
 
   const save = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !property) return
+    if (!user || (!property && !activity)) return
 
-    if (f.dataFim && f.dataFim < f.dataInicio) {
-      alert("A data de saída deve ser igual ou posterior à entrada.")
-      return
-    }
+    if (!f.dataInicio) { alert("Informe a data de entrada."); return }
+    if (f.dataFim && f.dataFim <= f.dataInicio) { alert("A data de saída deve ser posterior à entrada."); return }
+    const pessoas = Number(f.pessoas)
+    const maxPeople = property?.capacidade ?? activity?.vagas ?? 0
+    if (!Number.isInteger(pessoas) || pessoas < 1 || pessoas > maxPeople) { alert("Número de pessoas inválido para este item."); return }
 
     try {
       crudReserva(
         null,
         {
-          propriedadeId: property.id,
+          propriedadeId: property?.id,
+          atividadeId: activity?.id,
           dataInicio: f.dataInicio,
           dataFim: f.dataFim || undefined,
-          pessoas: Number(f.pessoas),
+          pessoas,
           valorTotal: totalCalculado,
           status: "pendente",
         },
@@ -84,24 +93,26 @@ export default function Page() {
           <Card>
             <CardHeader><CardTitle>Nova Reserva</CardTitle></CardHeader>
             <CardContent>
-              {!props.length ? (
+              {!props.length && !activities.length ? (
                 <p className="text-muted-foreground">Nenhuma propriedade disponível no momento.</p>
               ) : (
                 <form className="space-y-4" onSubmit={save}>
-                  <div>
+                  {!initialActivityId && <div>
                     <Label>Propriedade</Label>
                     <Select value={f.propriedadeId} onValueChange={(value) => set("propriedadeId", value)}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>{props.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome} — R$ {p.preco.toFixed(2)}/noite</SelectItem>)}</SelectContent>
                     </Select>
-                  </div>
+                  </div>}
+                  {activity && <div className="rounded-lg border p-3"><p className="font-medium">{activity.nome}</p><p className="text-sm text-muted-foreground">R$ {activity.preco.toFixed(2)} por pessoa</p></div>}
                   <div className="grid md:grid-cols-3 gap-4">
                     <div><Label>Entrada</Label><Input type="date" required value={f.dataInicio} onChange={(e) => set("dataInicio", e.target.value)} /></div>
                     <div><Label>Saída</Label><Input type="date" min={f.dataInicio || undefined} value={f.dataFim} onChange={(e) => set("dataFim", e.target.value)} /></div>
-                    <div><Label>Pessoas</Label><Input type="number" min="1" max={property?.capacidade} required value={f.pessoas} onChange={(e) => set("pessoas", e.target.value)} /></div>
+                    <div><Label>Pessoas</Label><Input type="number" min="1" max={property?.capacidade ?? activity?.vagas} required value={f.pessoas} onChange={(e) => set("pessoas", e.target.value)} /></div>
                   </div>
                   <div className="rounded-lg border p-4 bg-muted/30">
-                    <div className="flex justify-between"><span>Diária</span><span>R$ {(property?.preco || 0).toFixed(2)}</span></div>
+                    {property && <div className="flex justify-between"><span>Diária</span><span>R$ {property.preco.toFixed(2)}</span></div>}
+                    {activity && <div className="flex justify-between"><span>Atividade</span><span>R$ {activity.preco.toFixed(2)}</span></div>}
                     <div className="flex justify-between"><span>Noites</span><span>{noites}</span></div>
                     <div className="flex justify-between font-semibold mt-2 pt-2 border-t"><span>Total</span><span>R$ {totalCalculado.toFixed(2)}</span></div>
                   </div>
@@ -114,5 +125,14 @@ export default function Page() {
       </main>
       <Footer />
     </div>
+  )
+}
+
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando formulário...</div>}>
+      <NovaReservaContent />
+    </Suspense>
   )
 }

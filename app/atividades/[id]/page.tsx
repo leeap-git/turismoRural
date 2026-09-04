@@ -20,9 +20,11 @@ export default function AtividadeDetalhePage() {
   useEffect(() => {
     const refresh = () => {
       const store = loadStore()
-      const current = store.atividades.find((a) => a.id === id && a.ativo) || null
+      const candidate = store.atividades.find((a) => a.id === id && a.ativo) || null
+      const linkedProperty = candidate ? store.propriedades.find((p) => p.id === candidate.propriedadeId && p.ativo) || null : null
+      const current = candidate && linkedProperty ? candidate : null
       setActivity(current)
-      setProperty(current ? store.propriedades.find((p) => p.id === current.propriedadeId) || null : null)
+      setProperty(linkedProperty)
     }
     refresh()
     window.addEventListener("turismo-rural-store", refresh)
@@ -81,7 +83,7 @@ export default function AtividadeDetalhePage() {
                 <CardTitle>R$ {activity.preco.toFixed(2)} <span className="text-sm font-normal text-muted-foreground">/ pessoa</span></CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button className="w-full" size="lg" asChild><Link href="/dashboard/visitante/reservas/nova">Reservar agora</Link></Button>
+                <Button className="w-full" size="lg" asChild><Link href={`/dashboard/visitante/reservas/nova?atividadeId=${activity.id}`}>Reservar agora</Link></Button>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground"><Star className="h-4 w-4" />Atividade cadastrada pelo empreendedor</div>
               </CardContent>
             </Card>

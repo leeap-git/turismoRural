@@ -3,7 +3,6 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -26,7 +25,7 @@ import {
   MessageSquare
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { getReservasByUsuario, getPropriedadeById, getAtividadeById } from "@/lib/db"
+import { loadStore, crudReserva } from "@/lib/client-store"
 import type { Usuario } from "@/lib/types"
 
 const statusConfig = {
@@ -37,17 +36,9 @@ const statusConfig = {
 }
 
 export default function DashboardVisitantePage() {
-  const { user, userType, isAuthenticated, isLoading, logout } = useAuth()
+  const { user, userType, isLoading, logout } = useAuth()
   const router = useRouter()
 
-  // Redireciona se não estiver autenticado ou se for empreendedor
-  useEffect(() => {
-    if (!isLoading && (!isAuthenticated || userType !== "visitante")) {
-      router.push("/login")
-    }
-  }, [isAuthenticated, userType, isLoading, router])
-
-  // Mostra loading enquanto verifica autenticação
   if (isLoading || !user || userType !== "visitante") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -61,13 +52,12 @@ export default function DashboardVisitantePage() {
 
   const usuario = user as Usuario
   
-  // Busca reservas do usuário logado
-  const reservasUsuario = getReservasByUsuario(usuario.id)
-  
-  // Formata as reservas para exibição
+  const store = loadStore()
+  const reservasUsuario = store.reservas.filter(r => r.usuarioId === usuario.id)
+
   const reservas = reservasUsuario.map(reserva => {
-    const propriedade = getPropriedadeById(reserva.propriedadeId)
-    const atividade = reserva.atividadeId ? getAtividadeById(reserva.atividadeId) : null
+    const propriedade = reserva.propriedadeId ? store.propriedades.find(p => p.id === reserva.propriedadeId) : undefined
+    const atividade = reserva.atividadeId ? store.atividades.find(a => a.id === reserva.atividadeId) : null
     
     return {
       id: reserva.id,
@@ -85,6 +75,11 @@ export default function DashboardVisitantePage() {
   const handleLogout = () => {
     logout()
     router.push("/")
+  }
+
+  const handleCancelReservation = (id: string) => {
+    if (!usuario || !window.confirm("Cancelar esta reserva?")) return
+    try { crudReserva(id, { status: "cancelada" }, usuario.id) } catch (error) { alert(error instanceof Error ? error.message : "Não foi possível cancelar a reserva.") }
   }
 
   return (
@@ -249,7 +244,7 @@ export default function DashboardVisitantePage() {
                                       </Button>
                                     )}
                                     {reserva.status === "confirmada" && (
-                                      <Button variant="destructive" size="sm">Cancelar</Button>
+                                      <Button variant="destructive" size="sm" onClick={() => handleCancelReservation(reserva.id)}>Cancelar</Button>
                                     )}
                                   </div>
                                 </div>

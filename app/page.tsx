@@ -1,3 +1,6 @@
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { HeroSection } from "@/components/hero-section"
@@ -7,19 +10,23 @@ import { ActivityCard } from "@/components/activity-card"
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"
-import { 
-  getPropriedadesDestaque, 
-  getAtividadesProximas, 
-  getEmpreendedorById,
-  formatarPreco 
-} from "@/lib/db"
+import { loadStore } from "@/lib/client-store"
+import type { Propriedade, Atividade, Empreendedor } from "@/lib/types"
 
 export default function HomePage() {
-  const propriedadesDestaque = getPropriedadesDestaque(3)
-  const atividadesProximas = getAtividadesProximas(3)
+  const [store, setStore] = useState(loadStore())
+  useEffect(() => {
+    const refresh = () => setStore(loadStore())
+    refresh()
+    window.addEventListener("turismo-rural-store", refresh)
+    return () => window.removeEventListener("turismo-rural-store", refresh)
+  }, [])
+
+  const propriedadesDestaque = useMemo(() => store.propriedades.filter(p => p.ativo).sort((a,b) => (b.avaliacao - a.avaliacao) || (b.totalAvaliacoes - a.totalAvaliacoes)).slice(0, 3), [store])
+  const atividadesProximas = useMemo(() => store.atividades.filter(a => a.ativo).sort((a,b) => (a.dataEvento || "9999-99-99").localeCompare(b.dataEvento || "9999-99-99")).slice(0, 3), [store])
 
   const featuredProperties = propriedadesDestaque.map(prop => {
-    const emp = getEmpreendedorById(prop.empreendedorId)
+    const emp = store.empreendedores.find(e => e.id === prop.empreendedorId)
     return {
       id: prop.id,
       name: prop.nome,
@@ -36,7 +43,7 @@ export default function HomePage() {
   })
 
   const upcomingActivities = atividadesProximas.map(ativ => {
-    const emp = getEmpreendedorById(ativ.empreendedorId)
+    const emp = store.empreendedores.find(e => e.id === ativ.empreendedorId)
     return {
       id: ativ.id,
       name: ativ.nome,
