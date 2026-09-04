@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import type { Usuario, Empreendedor } from "@/lib/types"
 import { loadStore, saveStore, upsertEmpreendedor, upsertUsuario } from "@/lib/client-store"
 
-type UserType = Usuario | Empreendedor | null
+type UserType = (Usuario & { tipo: "visitante" }) | Empreendedor | null
 
 interface AuthContextType {
   user: UserType
