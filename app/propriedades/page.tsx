@@ -13,8 +13,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, SlidersHorizontal, MapPin } from "lucide-react"
-import { getPropriedades, getEmpreendedorById } from "@/lib/db"
-import type { Propriedade } from "@/lib/types"
+import { loadStore } from "@/lib/client-store"
+import type { Empreendedor, Propriedade } from "@/lib/types"
 
 const tiposPropriedade = ["fazenda", "sitio", "chacara", "pousada", "camping"]
 
@@ -51,13 +51,23 @@ function PropriedadesContent() {
     }
   }, [queryParam])
 
-  // Busca propriedades do mini banco
-  const todasPropriedades = getPropriedades()
+  const [todasPropriedades, setTodasPropriedades] = useState<Propriedade[]>([])
+  const [empreendedores, setEmpreendedores] = useState<Empreendedor[]>([])
 
-  // Converte para o formato do PropertyCard
+  useEffect(() => {
+    const refresh = () => {
+      const store = loadStore()
+      setTodasPropriedades(store.propriedades)
+      setEmpreendedores(store.empreendedores)
+    }
+    refresh()
+    window.addEventListener("turismo-rural-store", refresh)
+    return () => window.removeEventListener("turismo-rural-store", refresh)
+  }, [])
+
   const allProperties = useMemo(() => {
-    return todasPropriedades.map(prop => {
-      const emp = getEmpreendedorById(prop.empreendedorId)
+    return todasPropriedades.filter(prop => prop.ativo).map(prop => {
+      const emp = empreendedores.find(e => e.id === prop.empreendedorId)
 
       return {
         id: prop.id,
@@ -75,7 +85,7 @@ function PropriedadesContent() {
         comodidades: prop.comodidades
       }
     })
-  }, [todasPropriedades])
+  }, [todasPropriedades, empreendedores])
 
   const filteredProperties = allProperties.filter((property) => {
     const matchesSearch =

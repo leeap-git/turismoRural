@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { ActivityCard } from "@/components/activity-card"
@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, MapPin } from "lucide-react"
-import { getAtividades, getEmpreendedorById } from "@/lib/db"
+import { loadStore } from "@/lib/client-store"
+import type { Atividade, Empreendedor } from "@/lib/types"
 
 const tiposLabels: Record<string, string> = {
   passeio: "Passeio",
@@ -26,13 +27,23 @@ export default function AtividadesPage() {
   const [tipoFiltro, setTipoFiltro] = useState("Todos")
   const [ordenacao, setOrdenacao] = useState("data")
 
-  // Busca atividades do mini banco
-  const todasAtividades = getAtividades()
-  
-  // Converte para o formato do ActivityCard
+  const [todasAtividades, setTodasAtividades] = useState<Atividade[]>([])
+  const [empreendedores, setEmpreendedores] = useState<Empreendedor[]>([])
+
+  useEffect(() => {
+    const refresh = () => {
+      const store = loadStore()
+      setTodasAtividades(store.atividades)
+      setEmpreendedores(store.empreendedores)
+    }
+    refresh()
+    window.addEventListener("turismo-rural-store", refresh)
+    return () => window.removeEventListener("turismo-rural-store", refresh)
+  }, [])
+
   const allActivities = useMemo(() => {
-    return todasAtividades.map(ativ => {
-      const emp = getEmpreendedorById(ativ.empreendedorId)
+    return todasAtividades.filter(ativ => ativ.ativo).map(ativ => {
+      const emp = empreendedores.find(e => e.id === ativ.empreendedorId)
       return {
         id: ativ.id,
         name: ativ.nome,
@@ -48,7 +59,7 @@ export default function AtividadesPage() {
         type: ativ.tipo,
       }
     })
-  }, [todasAtividades])
+  }, [todasAtividades, empreendedores])
 
   const filteredActivities = allActivities.filter((activity) => {
     const matchesSearch = 

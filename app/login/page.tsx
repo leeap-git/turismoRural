@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
@@ -27,10 +27,11 @@ export default function LoginPage() {
     lembrar: false,
   })
 
-  // Redireciona se já estiver logado
-  if (isAuthenticated && userType) {
-    router.push(userType === "empreendedor" ? "/dashboard/empreendedor" : "/dashboard/visitante")
-  }
+  useEffect(() => {
+    if (isAuthenticated && userType) {
+      router.replace(userType === "empreendedor" ? "/dashboard/empreendedor" : "/dashboard/visitante")
+    }
+  }, [isAuthenticated, userType, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

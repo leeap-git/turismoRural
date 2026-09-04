@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
@@ -42,10 +42,11 @@ export default function CadastroPage() {
     aceitaTermos: false,
   })
 
-  // Redireciona se já estiver logado
-  if (isAuthenticated && authUserType) {
-    router.push(authUserType === "empreendedor" ? "/dashboard/empreendedor" : "/dashboard/visitante")
-  }
+  useEffect(() => {
+    if (isAuthenticated && authUserType) {
+      router.replace(authUserType === "empreendedor" ? "/dashboard/empreendedor" : "/dashboard/visitante")
+    }
+  }, [isAuthenticated, authUserType, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
